@@ -1,0 +1,74 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Output directories
+/dist
+/build
+/out
+/electron-builder-output
+
+# Logs and reports
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+/logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Electron build files
+*.asar
+*.db
+*.lock
+*.pyc
+*.pyo
+*.swp
+*.bak
+*.tmp
+
+# Sensitive files
+/keys/
+/certs/
+/secrets/
+
+# Electron-specific files
+/temp
+/.electron
+/electron-packager
+/electron-builder-cache
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.old
+*.swp
+*.swo
+
+# Coverage files
+/coverage/
+
+# Others
+/config/local.json
