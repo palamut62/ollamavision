@@ -179,21 +179,12 @@ const Sidebar: React.FC = () => {
     // Periyodik güncelleme
     const systemInfoInterval = setInterval(loadSystemInfo, 5000);
 
-    // Model listesi güncelleme event'ini dinle
-    const handleRefreshModels = () => {
-      console.log('Refreshing model list...');
-      fetchModels();
-    };
-
-    window.electron.ipcRenderer.on('refresh-models', handleRefreshModels);
-
     return () => {
       clearInterval(systemInfoInterval);
       unsubscribeOllama();
       unsubscribeRefresh();
       unsubscribeDownload();
       removeSystemInfoListener();
-      window.electron.ipcRenderer.removeListener('refresh-models', handleRefreshModels);
     };
   }, []);
 

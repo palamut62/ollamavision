@@ -66,16 +66,13 @@ export interface ElectronAPI {
 
 declare global {
   interface Window {
-    electron: {
-      ipcRenderer: {
-        on: (channel: string, func: (...args: any[]) => void) => void;
-        removeListener: (channel: string, func: (...args: any[]) => void) => void;
-      };
-    };
     electronAPI: {
+      // Sistem bilgileri
       getSystemInfo: () => Promise<DetailedSystemInfo>;
       checkOllamaStatus: () => Promise<boolean>;
       onSystemInfo: (callback: (info: SystemInfo) => void) => (() => void);
+
+      // Ollama yönetimi
       startOllama: () => Promise<boolean>;
       listModels: () => Promise<ModelInfo[]>;
     };
