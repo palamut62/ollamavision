@@ -1,3 +1,5 @@
+import { IpcRenderer } from 'electron';
+
 export interface SystemInfo {
   cpuUsage?: number;
   totalMemory?: number;
@@ -64,7 +66,19 @@ export interface ElectronAPI {
 
 declare global {
   interface Window {
-    electronAPI: ElectronAPI;
+    electron: {
+      ipcRenderer: {
+        on: (channel: string, func: (...args: any[]) => void) => void;
+        removeListener: (channel: string, func: (...args: any[]) => void) => void;
+      };
+    };
+    electronAPI: {
+      getSystemInfo: () => Promise<DetailedSystemInfo>;
+      checkOllamaStatus: () => Promise<boolean>;
+      onSystemInfo: (callback: (info: SystemInfo) => void) => (() => void);
+      startOllama: () => Promise<boolean>;
+      listModels: () => Promise<ModelInfo[]>;
+    };
   }
 }
 

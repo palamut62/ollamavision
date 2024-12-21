@@ -164,7 +164,7 @@ const Sidebar: React.FC = () => {
     };
 
     // Sistem bilgilerini dinle
-    const unsubscribeSystemInfo = window.electronAPI.onSystemInfo((info: SystemInfo) => {
+    const removeSystemInfoListener = window.electronAPI.onSystemInfo((info: SystemInfo) => {
       setSystemInfo(prev => ({
         ...prev,
         cpuUsage: info.cpuUsage || 0,
@@ -192,7 +192,7 @@ const Sidebar: React.FC = () => {
       unsubscribeOllama();
       unsubscribeRefresh();
       unsubscribeDownload();
-      unsubscribeSystemInfo();
+      removeSystemInfoListener();
       window.electron.ipcRenderer.removeListener('refresh-models', handleRefreshModels);
     };
   }, []);
