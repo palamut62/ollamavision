@@ -75,6 +75,9 @@ declare global {
       // Ollama yönetimi
       startOllama: () => Promise<boolean>;
       listModels: () => Promise<ModelInfo[]>;
+
+      // Terminal komutları
+      runCommand: (command: string) => Promise<string>;
     };
   }
 }

@@ -165,12 +165,17 @@ const Sidebar: React.FC = () => {
 
     // Sistem bilgilerini dinle
     const removeSystemInfoListener = window.electronAPI.onSystemInfo((info: SystemInfo) => {
-      setSystemInfo(prev => ({
-        ...prev,
-        cpuUsage: info.cpuUsage || 0,
-        totalMemory: info.totalMemory,
-        freeMemory: info.freeMemory
-      }));
+      setSystemInfo(prev => {
+        // CPU kullanımı -1 ise önceki değeri koru
+        const cpuUsage = info.cpuUsage && info.cpuUsage >= 0 ? info.cpuUsage : prev?.cpuUsage;
+        
+        return {
+          ...prev,
+          cpuUsage,
+          totalMemory: info.totalMemory,
+          freeMemory: info.freeMemory
+        };
+      });
     });
 
     // İlk yükleme
@@ -475,7 +480,9 @@ const Sidebar: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <MemoryIcon sx={{ mr: 1, fontSize: 20 }} />
             <Typography variant="body2">
-              CPU: {systemInfo?.cpuUsage ? `${systemInfo.cpuUsage.toFixed(1)}%` : 'N/A'}
+              CPU: {systemInfo?.cpuUsage !== undefined && systemInfo.cpuUsage >= 0 
+                ? `${systemInfo.cpuUsage.toFixed(1)}%` 
+                : 'Calculating...'}
             </Typography>
           </Box>
           

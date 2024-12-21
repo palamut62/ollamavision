@@ -16,5 +16,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Ollama yönetimi
   startOllama: () => ipcRenderer.invoke('start-ollama'),
-  listModels: () => ipcRenderer.invoke('list-models') as Promise<ModelInfo[]>
+  listModels: () => ipcRenderer.invoke('list-models') as Promise<ModelInfo[]>,
+
+  // Terminal komutları
+  runCommand: (command: string) => ipcRenderer.invoke('run-command', command) as Promise<string>
 }); 

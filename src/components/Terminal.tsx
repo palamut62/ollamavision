@@ -167,13 +167,13 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
             term.write('$ ');
           } else {
             // Komutu çalıştır
-            window.electronAPI.runCommand(command).then((output) => {
+            window.electronAPI.runCommand(command).then((output: string) => {
               if (output) {
                 term.write(output.replace(/\n/g, '\r\n'));
               }
               term.write('\r\n$ ');
-            }).catch((error) => {
-              term.write(`\r\nError: ${error}\r\n$ `);
+            }).catch((error: Error) => {
+              term.write(`\r\nError: ${error.message}\r\n$ `);
             });
           }
         } else {

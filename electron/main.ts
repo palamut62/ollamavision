@@ -24,30 +24,46 @@ let lastCpuInfo = os.cpus();
 let lastCpuInfoTime = Date.now();
 
 function getCpuUsage(): number {
-  const currentCpuInfo = os.cpus();
-  const currentTime = Date.now();
-  const timeDifference = currentTime - lastCpuInfoTime;
+  try {
+    const currentCpuInfo = os.cpus();
+    const currentTime = Date.now();
+    const timeDifference = currentTime - lastCpuInfoTime;
 
-  let totalUsage = 0;
+    if (timeDifference < 100) {
+      return -1; // Çok sık ölçüm yapılıyorsa geçersiz değer döndür
+    }
 
-  for (let i = 0; i < currentCpuInfo.length; i++) {
-    const currentCore = currentCpuInfo[i];
-    const lastCore = lastCpuInfo[i];
+    let totalUsage = 0;
+    let validCores = 0;
 
-    const currentTotal = Object.values(currentCore.times).reduce((a, b) => a + b, 0);
-    const lastTotal = Object.values(lastCore.times).reduce((a, b) => a + b, 0);
+    for (let i = 0; i < currentCpuInfo.length; i++) {
+      const currentCore = currentCpuInfo[i];
+      const lastCore = lastCpuInfo[i];
 
-    const totalDiff = currentTotal - lastTotal;
-    const idleDiff = currentCore.times.idle - lastCore.times.idle;
+      if (!currentCore || !lastCore) continue;
 
-    const usage = (1 - idleDiff / totalDiff) * 100;
-    totalUsage += usage;
+      const currentTotal = Object.values(currentCore.times).reduce((a, b) => a + b, 0);
+      const lastTotal = Object.values(lastCore.times).reduce((a, b) => a + b, 0);
+
+      const totalDiff = currentTotal - lastTotal;
+      if (totalDiff <= 0) continue;
+
+      const idleDiff = currentCore.times.idle - lastCore.times.idle;
+      if (idleDiff < 0) continue;
+
+      const usage = Math.min(100, Math.max(0, (1 - idleDiff / totalDiff) * 100));
+      totalUsage += usage;
+      validCores++;
+    }
+
+    lastCpuInfo = currentCpuInfo;
+    lastCpuInfoTime = currentTime;
+
+    return validCores > 0 ? totalUsage / validCores : -1;
+  } catch (error) {
+    console.error('CPU usage calculation error:', error);
+    return -1;
   }
-
-  lastCpuInfo = currentCpuInfo;
-  lastCpuInfoTime = currentTime;
-
-  return totalUsage / currentCpuInfo.length;
 }
 
 // Ollama işlemini bul ve sonlandır
