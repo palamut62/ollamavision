@@ -15,6 +15,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import CodeBlock from './CodeBlock';
 
 interface FormattedResponse {
   description: string;
@@ -58,7 +59,7 @@ const Chat: React.FC = () => {
           gap: 2,
           width: '100%'
         }}>
-          {/* Açıklama */}
+          {/* Description */}
           {response.description && (
             <Typography 
               variant="body1" 
@@ -68,59 +69,12 @@ const Chat: React.FC = () => {
             </Typography>
           )}
 
-          {/* Kod */}
+          {/* Code */}
           {response.code && (
-            <Box sx={{ 
-              bgcolor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 1,
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              <Box sx={{ 
-                p: 1,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                bgcolor: 'background.default'
-              }}>
-                <Typography variant="caption" color="text.secondary">
-                  Python
-                </Typography>
-                <Typography 
-                  variant="caption" 
-                  onClick={() => {
-                    const code = response.code.replace(/^```python\s*|\s*```$/g, '').trim();
-                    navigator.clipboard.writeText(code);
-                  }}
-                  sx={{ 
-                    cursor: 'pointer',
-                    color: 'text.secondary',
-                    '&:hover': { color: 'primary.main' }
-                  }}
-                >
-                  Kopyala
-                </Typography>
-              </Box>
-              <Box sx={{ 
-                p: 2,
-                fontFamily: 'monospace',
-                fontSize: '0.9rem',
-                whiteSpace: 'pre-wrap',
-                overflowX: 'auto',
-                bgcolor: 'background.paper'
-              }}>
-                <code>
-                  {response.code.replace(/^```python\s*|\s*```$/g, '').trim()}
-                </code>
-              </Box>
-            </Box>
+            <CodeBlock code={response.code} language="python" />
           )}
 
-          {/* Liste */}
+          {/* List */}
           {response.list && response.list.length > 0 && (
             <Box component="ul" sx={{ pl: 3, m: 0 }}>
               {response.list.map((item, index) => (
@@ -131,7 +85,7 @@ const Chat: React.FC = () => {
             </Box>
           )}
 
-          {/* Tablo */}
+          {/* Table */}
           {response.table && response.table.length > 0 && (
             <TableContainer component={Paper} variant="outlined">
               <Table size="small">
@@ -198,7 +152,7 @@ const Chat: React.FC = () => {
       await addMessageToChat(selectedChatId, { 
         role: 'assistant', 
         content: JSON.stringify({
-          description: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.',
+          description: 'Sorry, an error occurred. Please try again.',
           code: "",
           list: [],
           table: []
@@ -298,7 +252,7 @@ const Chat: React.FC = () => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Bir mesaj yazın..."
+          placeholder="Type a message..."
           disabled={isLoading}
           sx={{
             '& .MuiOutlinedInput-root': {

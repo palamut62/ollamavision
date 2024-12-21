@@ -9,14 +9,33 @@ export interface ChatMessage {
 
 export class OllamaManager {
   private static readonly API_URL = 'http://127.0.0.1:11434/api';
-  private static readonly DEFAULT_SYSTEM_MESSAGE = 'Sen bir Python programlama uzmanısın. Yanıtlarını aşağıdaki formatta vermelisin:\n\n' +
-    'Yanıtını JSON formatında ver ve şu alanları kullan:\n' +
-    '- description: Ana açıklama metni\n' +
-    '- code: Varsa kod örneği (```python ile başla```)\n' +
-    '- list: Varsa liste maddeleri (her madde - ile başlamalı)\n' +
-    '- table: Varsa tablo verileri (başlık satırı gerekli)\n\n' +
-    'Örnek:\n' +
-    '{"description": "Açıklama metni", "code": "```python\\nprint(\'Örnek\')\\n```", "list": ["- Madde 1"], "table": [["Başlık"], ["Değer"]]}';
+  private static readonly DEFAULT_SYSTEM_MESSAGE = 'You are a Python programming expert. You must format your responses in JSON with the following structure:\n\n' +
+    '{\n' +
+    '  "description": "Main explanation text",\n' +
+    '  "code": "```python\\nYour code here\\n```",\n' +
+    '  "list": ["- List item 1", "- List item 2"],\n' +
+    '  "table": [["Header1", "Header2"], ["Value1", "Value2"]]\n' +
+    '}\n\n' +
+    'Example response:\n' +
+    '{\n' +
+    '  "description": "Here\'s a simple Python program that demonstrates list operations:",\n' +
+    '  "code": "```python\\nnumbers = [1, 2, 3, 4, 5]\\nprint(sum(numbers))  # Output: 15\\n```",\n' +
+    '  "list": [\n' +
+    '    "- Lists are mutable sequences",\n' +
+    '    "- Lists can contain elements of different types"\n' +
+    '  ],\n' +
+    '  "table": [\n' +
+    '    ["Operation", "Description"],\n' +
+    '    ["append()", "Add an item to the end"],\n' +
+    '    ["clear()", "Remove all items"]\n' +
+    '  ]\n' +
+    '}\n\n' +
+    'Important:\n' +
+    '1. Always wrap code blocks with ```python and ``` tags\n' +
+    '2. Always start list items with "- "\n' +
+    '3. Always include all JSON fields, even if empty\n' +
+    '4. Ensure the response is valid JSON\n' +
+    '5. Do not include any text outside the JSON structure';
 
   private static isDownloading = false;
   private static currentModelName: string | null = null;
@@ -267,14 +286,14 @@ export class OllamaManager {
       const data = await response.json();
       let content = data.message?.content || '';
 
-      // JSON formatını bul ve temizle
-      content = content.replace(/```json\s*|\s*```/g, '');
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      
-      if (jsonMatch) {
-        try {
-          const parsedContent = JSON.parse(jsonMatch[0]);
-          
+      // Yanıtı JSON formatına dönüştür
+      try {
+        // Önce JSON formatını bul
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const jsonContent = jsonMatch[0];
+          const parsedContent = JSON.parse(jsonContent);
+
           // Kod bloğunu düzelt
           if (parsedContent.code) {
             parsedContent.code = parsedContent.code
@@ -291,15 +310,20 @@ export class OllamaManager {
             );
           }
 
+          // Tablo verilerini düzelt
+          if (!Array.isArray(parsedContent.table)) {
+            parsedContent.table = [];
+          }
+
           return JSON.stringify({
             description: parsedContent.description || '',
             code: parsedContent.code || '',
-            list: Array.isArray(parsedContent.list) ? parsedContent.list : [],
-            table: Array.isArray(parsedContent.table) ? parsedContent.table : []
-          }, null, 2);
-        } catch (error) {
-          console.error('JSON parse hatası:', error);
+            list: parsedContent.list || [],
+            table: parsedContent.table || []
+          });
         }
+      } catch (error) {
+        console.error('JSON parse hatası:', error);
       }
 
       // JSON parse edilemezse veya bulunamazsa
@@ -308,7 +332,7 @@ export class OllamaManager {
         code: '',
         list: [],
         table: []
-      }, null, 2);
+      });
 
     } catch (error) {
       console.error('Yanıt üretilemedi:', error);
@@ -317,7 +341,7 @@ export class OllamaManager {
         code: '',
         list: [],
         table: []
-      }, null, 2);
+      });
     }
   }
 }
