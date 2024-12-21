@@ -72,10 +72,6 @@ export class OllamaManager {
 
   static async getAllModels(): Promise<ModelInfo[]> {
     try {
-      // Mevcut modelleri al
-      const installedModels = await window.electronAPI.listModels();
-      logger.info('Retrieved installed models');
-      
       // Varsayılan modeller
       const defaultModels = [
         { name: 'llama2', description: 'Meta\'s Llama 2 model' },
@@ -90,12 +86,17 @@ export class OllamaManager {
         { name: 'solar', description: 'Upstage\'s Solar model' }
       ];
 
-      // Yüklü modelleri ve varsayılan modelleri birleştir
+      // Yüklü modelleri al
+      const response = await fetch('http://127.0.0.1:11434/api/tags');
+      if (!response.ok) throw new Error('Failed to fetch models');
+      const data = await response.json() as { models: ModelInfo[] };
+      const installedModels = data.models || [];
+
+      // Tüm modelleri birleştir
       const allModels: ModelInfo[] = [];
 
       // Önce yüklü modelleri ekle
       installedModels.forEach(model => {
-        // Varsayılan model listesinde varsa açıklamasını al
         const defaultModel = defaultModels.find(m => m.name === model.name);
         allModels.push({
           ...model,
@@ -118,10 +119,9 @@ export class OllamaManager {
         }
       });
 
-      logger.info('Models processed successfully');
       return allModels;
-    } catch (error: any) {
-      logger.error('Failed to get models');
+    } catch (error) {
+      console.error('Error listing models:', error);
       return [];
     }
   }

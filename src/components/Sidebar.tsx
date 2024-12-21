@@ -168,13 +168,11 @@ const Sidebar: React.FC = () => {
       const isRunning = await window.electronAPI.checkOllamaStatus();
       
       if (!isRunning) {
-        logger.warning('Ollama is not running');
         setModels([]);
         return;
       }
 
       const models = await OllamaManager.getAllModels();
-      logger.info('Models loaded successfully');
       
       // Modelleri sırala: Önce yüklü olanlar, sonra diğerleri
       const sortedModels = models.sort((a, b) => {
@@ -185,7 +183,6 @@ const Sidebar: React.FC = () => {
       
       setModels(sortedModels);
     } catch (error: any) {
-      logger.error('Failed to fetch models');
       setModels([]);
     } finally {
       setLoading(false);

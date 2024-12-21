@@ -6,8 +6,10 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as bcrypt from 'bcrypt';
 import fetch from 'node-fetch-commonjs';
+import type { ModelInfo } from '../src/types/electron';
 
 const execAsync = promisify(exec);
+const execPromise = promisify(exec);
 const SALT_ROUNDS = 10;
 const OLLAMA_API = 'http://127.0.0.1:11434/api';
 
@@ -138,17 +140,71 @@ ipcMain.handle('ollama-check-status', async () => {
   }
 });
 
-// Terminal komutu çalıştırma
-ipcMain.handle('run-command', async (_event, command: string) => {
+// Komut çalıştırma
+ipcMain.handle('run-command', async (_, command: string) => {
   try {
-    const { stdout, stderr } = await execAsync(command, {
-      shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/bash',
-      cwd: process.cwd()
-    });
+    // Ollama komutlarını özel olarak işle
+    if (command.startsWith('ollama')) {
+      const parts = command.split(' ');
+      const subCommand = parts[1];
+
+      switch (subCommand) {
+        case 'list':
+          const models = await listModels();
+          if (models.length === 0) {
+            return 'No models found';
+          }
+          
+          // Tablo genişlikleri
+          const nameWidth = 30;
+          const sizeWidth = 10;
+          const modifiedWidth = 25;
+          
+          // Başlık satırı
+          let output = '\r\n';
+          output += 'NAME'.padEnd(nameWidth) + 'SIZE'.padEnd(sizeWidth) + 'MODIFIED\r\n';
+          output += '─'.repeat(nameWidth + sizeWidth + modifiedWidth) + '\r\n';
+          
+          // Model bilgileri
+          models.forEach(model => {
+            const name = model.name.padEnd(nameWidth);
+            const size = formatBytes(model.size).padEnd(sizeWidth);
+            const modified = new Date(model.modified_at).toLocaleString();
+            output += `${name}${size}${modified}\r\n`;
+          });
+          
+          return output;
+
+        case 'pull':
+          if (parts.length < 3) return 'Usage: ollama pull <model>';
+          const modelName = parts[2];
+          // İndirme işlemini başlat
+          downloadModel(modelName);
+          return `Downloading ${modelName}... Check the sidebar for progress.`;
+
+        case 'rm':
+        case 'remove':
+          if (parts.length < 3) return 'Usage: ollama rm <model>';
+          const modelToDelete = parts[2];
+          const success = await deleteModel(modelToDelete);
+          return success ? `Deleted ${modelToDelete}` : `Failed to delete ${modelToDelete}`;
+
+        case 'run':
+          if (parts.length < 3) return 'Usage: ollama run <model> [prompt]';
+          // TODO: Model çalıştırma işlemi eklenecek
+          return 'Model running is not implemented yet';
+
+        default:
+          return `Unknown ollama command: ${subCommand}\nAvailable commands: list, pull, rm, run`;
+      }
+    }
+
+    // Diğer komutlar için normal işlem
+    const shell = process.platform === 'win32' ? 'powershell.exe' : '/bin/bash';
+    const { stdout, stderr } = await execPromise(command, { shell });
     return stdout || stderr;
   } catch (error: any) {
-    console.error('Komut çalıştırma hatası:', error);
-    return error.message || 'Komut çalıştırılırken bir hata oluştu';
+    return `Error: ${error.message}`;
   }
 });
 
@@ -293,3 +349,50 @@ ipcMain.on('maximize-window', () => {
 ipcMain.on('close-window', () => {
   mainWindow?.close();
 });
+
+// Byte formatlama yardımcı fonksiyonu
+function formatBytes(bytes: number | undefined): string {
+  if (!bytes) return '0 B';
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+// Ollama API fonksiyonları
+async function listModels(): Promise<ModelInfo[]> {
+  try {
+    const response = await fetch('http://127.0.0.1:11434/api/tags');
+    if (!response.ok) throw new Error('Failed to fetch models');
+    const data = await response.json() as { models: ModelInfo[] };
+    return data.models || [];
+  } catch (error) {
+    console.error('Error listing models:', error);
+    return [];
+  }
+}
+
+async function downloadModel(modelName: string): Promise<void> {
+  try {
+    const response = await fetch('http://127.0.0.1:11434/api/pull', {
+      method: 'POST',
+      body: JSON.stringify({ name: modelName }),
+    });
+    if (!response.ok) throw new Error('Failed to start download');
+  } catch (error) {
+    console.error('Error starting download:', error);
+    throw error;
+  }
+}
+
+async function deleteModel(modelName: string): Promise<boolean> {
+  try {
+    const response = await fetch('http://127.0.0.1:11434/api/delete', {
+      method: 'DELETE',
+      body: JSON.stringify({ name: modelName }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting model:', error);
+    return false;
+  }
+}

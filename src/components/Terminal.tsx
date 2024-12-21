@@ -16,59 +16,43 @@ interface TerminalProps {
 
 const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
+  const commandBufferRef = useRef('');
   const [terminal, setTerminal] = useState<XTerm | null>(null);
   const [fitAddon, setFitAddon] = useState<FitAddon | null>(null);
-  const commandBufferRef = useRef<string>('');
-  const [isDragging, setIsDragging] = useState(false);
   const [height, setHeight] = useState(300);
-  const dragStartRef = useRef<{ y: number; height: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startY, setStartY] = useState(0);
+  const [startHeight, setStartHeight] = useState(0);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
     setIsDragging(true);
-    dragStartRef.current = {
-      y: e.clientY,
-      height: height
-    };
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging || !dragStartRef.current) return;
-
-    const windowHeight = window.innerHeight;
-    const mouseY = e.clientY;
-    const statusBarHeight = 22; // StatusBar yüksekliği
-    const maxY = windowHeight - statusBarHeight;
-    
-    // Alt sınır sabit kalacak şekilde yükseklik hesaplama
-    const bottomY = dragStartRef.current.y + dragStartRef.current.height;
-    const newHeight = bottomY - mouseY;
-    
-    // Minimum ve maksimum yükseklik sınırları
-    const constrainedHeight = Math.min(800, Math.max(200, newHeight));
-    
-    if (mouseY >= 0 && mouseY <= maxY - 200) { // En az 200px yükseklik kalacak şekilde
-      setHeight(constrainedHeight);
-      fitAddon?.fit();
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    dragStartRef.current = null;
+    setStartY(e.clientY);
+    setStartHeight(height);
   };
 
   useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const deltaY = startY - e.clientY;
+      const newHeight = Math.min(Math.max(startHeight + deltaY, 100), window.innerHeight - 100);
+      setHeight(newHeight);
+      fitAddon?.fit();
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     }
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, startY, startHeight, fitAddon]);
 
   useEffect(() => {
     if (!terminalRef.current) return;
@@ -79,10 +63,33 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
       fontFamily: 'Consolas, monospace',
       theme: {
         background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
+        foreground: '#ffffff',
+        cursor: '#ffffff',
+        cursorAccent: '#000000',
         selectionBackground: '#264f78',
+        black: '#000000',
+        red: '#ee4444',
+        green: '#44ee44',
+        yellow: '#eeee44',
+        blue: '#4444ee',
+        magenta: '#ee44ee',
+        cyan: '#44eeee',
+        white: '#eeeeee',
+        brightBlack: '#666666',
+        brightRed: '#ff4444',
+        brightGreen: '#44ff44',
+        brightYellow: '#ffff44',
+        brightBlue: '#4444ff',
+        brightMagenta: '#ff44ff',
+        brightCyan: '#44ffff',
+        brightWhite: '#ffffff'
       },
+      convertEol: true,
+      cols: 120,
+      rows: 30,
+      scrollback: 1000,
+      rightClickSelectsWord: true,
+      allowTransparency: true
     });
 
     const newFitAddon = new FitAddon();
@@ -100,29 +107,73 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
     term.open(terminalRef.current);
     newFitAddon.fit();
 
-    term.write('Desktop Agent Terminal\r\n$ ');
+    // Kopyalama ve yapıştırma için event listener'lar
+    term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+      // Ctrl+C (Kopyalama)
+      if (event.ctrlKey && event.key === 'c' && term.hasSelection()) {
+        const selection = term.getSelection();
+        if (selection) {
+          navigator.clipboard.writeText(selection);
+        }
+        return false;
+      }
+      
+      // Ctrl+V (Yapıştırma)
+      if (event.ctrlKey && event.key === 'v') {
+        navigator.clipboard.readText().then(text => {
+          text.split('').forEach(char => {
+            if (char === '\n') {
+              term.write('\r');
+            } else {
+              term.write(char);
+            }
+            commandBufferRef.current += char;
+          });
+        });
+        return false;
+      }
 
-    // Log mesajlarını dinle
-    const unsubscribeLog = eventBus.on('terminal-log', (message: string) => {
-      term.write(message);
-      term.write('$ ');
+      // Ctrl+L (Temizleme)
+      if (event.ctrlKey && event.key === 'l') {
+        term.clear();
+        term.write('\r\n$ ');
+        commandBufferRef.current = '';
+        return false;
+      }
+
+      return true;
     });
+
+    // Sağ tık menüsü için event listener
+    terminalRef.current.addEventListener('contextmenu', (e: MouseEvent) => {
+      e.preventDefault();
+      if (term.hasSelection()) {
+        const selection = term.getSelection();
+        if (selection) {
+          navigator.clipboard.writeText(selection);
+        }
+      }
+    });
+
+    term.write('Desktop Agent Terminal\r\n\r\n$ ');
 
     term.onData((data) => {
       if (data === '\r') { // Enter tuşu
         const command = commandBufferRef.current.trim();
         if (command) {
+          term.write('\r\n');
           if (command === 'clear' || command === 'cls') {
             term.clear();
             term.write('$ ');
           } else {
             // Komutu çalıştır
             window.electronAPI.runCommand(command).then((output) => {
-              term.write('\r\n' + output + '\r\n$ ');
-              logger.info(`Command executed: ${command}`);
+              if (output) {
+                term.write(output.replace(/\n/g, '\r\n'));
+              }
+              term.write('\r\n$ ');
             }).catch((error) => {
-              term.write('\r\n' + error + '\r\n$ ');
-              logger.error(`Command failed: ${command} - ${error}`);
+              term.write(`\r\nError: ${error}\r\n$ `);
             });
           }
         } else {
@@ -133,6 +184,16 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
         if (commandBufferRef.current.length > 0) {
           commandBufferRef.current = commandBufferRef.current.slice(0, -1);
           term.write('\b \b');
+        }
+      } else if (data === '\u0003') { // Ctrl+C
+        if (term.hasSelection()) {
+          const selection = term.getSelection();
+          if (selection) {
+            navigator.clipboard.writeText(selection);
+          }
+        } else {
+          term.write('^C\r\n$ ');
+          commandBufferRef.current = '';
         }
       } else {
         commandBufferRef.current += data;
@@ -148,14 +209,9 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
     setTerminal(term);
     setFitAddon(newFitAddon);
 
-    // Başlangıç mesajı
-    logger.info('Terminal started');
-
     return () => {
       window.removeEventListener('resize', handleResize);
-      unsubscribeLog();
       term.dispose();
-      logger.info('Terminal closed');
     };
   }, []);
 
