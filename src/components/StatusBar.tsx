@@ -24,6 +24,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import CancelIcon from '@mui/icons-material/Cancel';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import TerminalManager from './TerminalManager';
+import { logger } from '../services/LogService';
 
 const StatusBar: React.FC = () => {
   const [ollamaStatus, setOllamaStatus] = useState<'running' | 'stopped' | 'not-installed'>('stopped');
@@ -124,11 +125,13 @@ const StatusBar: React.FC = () => {
       // Check current status first
       const currentStatus = await checkOllamaStatus();
       if (currentStatus) {
+        const message = 'Ollama is already running!';
         setNotification({
           show: true,
-          message: 'Ollama is already running!',
+          message,
           type: 'success'
         });
+        logger.info(message);
         return;
       }
 
@@ -139,21 +142,25 @@ const StatusBar: React.FC = () => {
       const isRunning = await waitForOllama();
       
       if (isRunning) {
+        const message = 'Ollama started successfully!';
         setNotification({
           show: true,
-          message: 'Ollama started successfully!',
+          message,
           type: 'success'
         });
+        logger.success(message);
       } else {
         throw new Error('Failed to start Ollama or took too long');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start Ollama:', error);
+      const message = 'Failed to start Ollama. Please try starting it manually.';
       setNotification({
         show: true,
-        message: 'Failed to start Ollama. Please try starting it manually.',
+        message,
         type: 'error'
       });
+      logger.error(message);
     } finally {
       setIsStarting(false);
     }
@@ -176,8 +183,9 @@ const StatusBar: React.FC = () => {
       try {
         await OllamaManager.cancelDownload();
         setDownloadStatus(null);
-      } catch (error) {
-        console.error('Failed to cancel download:', error);
+        logger.info(`Download cancelled for model: ${downloadStatus.modelName}`);
+      } catch (error: any) {
+        logger.error(`Failed to cancel download: ${error.message}`);
       }
     }
   };

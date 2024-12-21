@@ -6,6 +6,8 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
 import { Box, IconButton, Paper } from '@mui/material';
 import { Close, Remove, DragHandle } from '@mui/icons-material';
+import { eventBus } from '../services/EventBus';
+import { logger } from '../services/LogService';
 
 interface TerminalProps {
   onClose: () => void;
@@ -100,16 +102,29 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
 
     term.write('Desktop Agent Terminal\r\n$ ');
 
+    // Log mesajlarını dinle
+    const unsubscribeLog = eventBus.on('terminal-log', (message: string) => {
+      term.write(message);
+      term.write('$ ');
+    });
+
     term.onData((data) => {
       if (data === '\r') { // Enter tuşu
         const command = commandBufferRef.current.trim();
         if (command) {
-          // Komutu çalıştır
-          window.electronAPI.runCommand(command).then((output) => {
-            term.write('\r\n' + output + '\r\n$ ');
-          }).catch((error) => {
-            term.write('\r\n' + error + '\r\n$ ');
-          });
+          if (command === 'clear' || command === 'cls') {
+            term.clear();
+            term.write('$ ');
+          } else {
+            // Komutu çalıştır
+            window.electronAPI.runCommand(command).then((output) => {
+              term.write('\r\n' + output + '\r\n$ ');
+              logger.info(`Command executed: ${command}`);
+            }).catch((error) => {
+              term.write('\r\n' + error + '\r\n$ ');
+              logger.error(`Command failed: ${command} - ${error}`);
+            });
+          }
         } else {
           term.write('\r\n$ ');
         }
@@ -133,9 +148,14 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
     setTerminal(term);
     setFitAddon(newFitAddon);
 
+    // Başlangıç mesajı
+    logger.info('Terminal started');
+
     return () => {
       window.removeEventListener('resize', handleResize);
+      unsubscribeLog();
       term.dispose();
+      logger.info('Terminal closed');
     };
   }, []);
 

@@ -18,6 +18,7 @@ import type { ModelInfo, SystemInfo } from '../types/electron';
 import { useChatStore } from '../store/chatStore';
 import { eventBus } from '../services/EventBus';
 import { OllamaManager } from '../services/OllamaManager';
+import { logger } from '../services/LogService';
 import DownloadIcon from '@mui/icons-material/Download';
 import CodeIcon from '@mui/icons-material/Code';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
@@ -111,23 +112,18 @@ const Sidebar: React.FC = () => {
   } = useChatStore();
 
   useEffect(() => {
-    // Sistem bilgilerini dinle
-    const unsubscribe = window.electronAPI.onSystemInfo((info: SystemInfo) => {
-      setSystemInfo(info);
-    });
-
-    // Ollama modellerini getir
+    // İlk yükleme
     fetchModels();
 
     // Ollama başlatıldığında modelleri güncelle
     const unsubscribeOllama = eventBus.on('ollama-started', () => {
-      console.log('Ollama started, updating models...');
+      logger.info('Ollama started, updating models');
       fetchModels();
     });
 
     // Model yenileme eventi için listener ekle
     const unsubscribeRefresh = eventBus.on('refresh-models', () => {
-      console.log('Refreshing models...');
+      logger.info('Refreshing models');
       fetchModels();
     });
 
@@ -150,13 +146,16 @@ const Sidebar: React.FC = () => {
         const info = await window.electronAPI.getSystemInfo();
         setSystemInfo(info);
       } catch (error) {
-        console.error('Failed to get system info:', error);
+        logger.error('Failed to get system info');
       }
     };
     loadSystemInfo();
 
+    // Sistem bilgilerini periyodik olarak güncelle
+    const systemInfoInterval = setInterval(loadSystemInfo, 5000);
+
     return () => {
-      unsubscribe();
+      clearInterval(systemInfoInterval);
       unsubscribeOllama();
       unsubscribeRefresh();
       unsubscribeDownload();
@@ -166,19 +165,38 @@ const Sidebar: React.FC = () => {
   const fetchModels = async () => {
     try {
       setLoading(true);
+      const isRunning = await window.electronAPI.checkOllamaStatus();
+      
+      if (!isRunning) {
+        logger.warning('Ollama is not running');
+        setModels([]);
+        return;
+      }
+
       const models = await OllamaManager.getAllModels();
-      setModels(models);
-    } catch (error) {
-      console.error('Failed to get model list:', error);
+      logger.info('Models loaded successfully');
+      
+      // Modelleri sırala: Önce yüklü olanlar, sonra diğerleri
+      const sortedModels = models.sort((a, b) => {
+        if (a.isInstalled && !b.isInstalled) return -1;
+        if (!a.isInstalled && b.isInstalled) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      
+      setModels(sortedModels);
+    } catch (error: any) {
+      logger.error('Failed to fetch models');
+      setModels([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteClick = async (e: React.MouseEvent, modelName: string) => {
+  const handleDeleteClick = (e: React.MouseEvent<HTMLButtonElement>, modelName: string) => {
     e.stopPropagation();
     setModelToDelete(modelName);
     setDeleteDialogOpen(true);
+    logger.info('Preparing to delete model');
   };
 
   const handleDeleteConfirm = async () => {
@@ -188,6 +206,7 @@ const Sidebar: React.FC = () => {
     try {
       const success = await OllamaManager.deleteModel(modelToDelete);
       if (success) {
+        logger.success('Model deleted successfully');
         // If the deleted model was selected, clear it
         if (selectedModel === modelToDelete) {
           setSelectedModel(null);
@@ -195,9 +214,11 @@ const Sidebar: React.FC = () => {
         }
         // Refresh model list
         await fetchModels();
+      } else {
+        logger.error('Failed to delete model');
       }
-    } catch (error) {
-      console.error('Failed to delete model:', error);
+    } catch (error: any) {
+      logger.error('Error deleting model');
     } finally {
       setIsDeleting(false);
       setDeleteDialogOpen(false);
@@ -215,6 +236,7 @@ const Sidebar: React.FC = () => {
     // If same model is selected, cancel
     if (selectedModel === modelName) return;
 
+    logger.info('Selecting model');
     // Clear previous chat
     clearMessages();
     
@@ -222,7 +244,7 @@ const Sidebar: React.FC = () => {
     setSelectedModel(modelName);
   };
 
-  const handleDownloadClick = async (e: React.MouseEvent, modelName: string) => {
+  const handleDownloadClick = async (e: React.MouseEvent<HTMLButtonElement>, modelName: string) => {
     e.stopPropagation();
     
     // If already downloading, cancel it
@@ -234,20 +256,23 @@ const Sidebar: React.FC = () => {
           delete newProgress[modelName];
           return newProgress;
         });
-      } catch (error) {
-        console.error('Failed to cancel download:', error);
+        logger.info('Download cancelled');
+      } catch (error: any) {
+        logger.error('Failed to cancel download');
       }
       return;
     }
 
     try {
+      logger.info('Starting model download');
       const success = await OllamaManager.downloadModel(modelName);
       if (success) {
+        logger.success('Model downloaded successfully');
         // Refresh model list
         await fetchModels();
       }
-    } catch (error) {
-      console.error('Failed to download model:', error);
+    } catch (error: any) {
+      logger.error('Failed to download model');
       setDownloadProgress(prev => {
         const newProgress = { ...prev };
         delete newProgress[modelName];
