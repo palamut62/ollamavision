@@ -72,54 +72,21 @@ export class OllamaManager {
 
   static async getAllModels(): Promise<ModelInfo[]> {
     try {
-      // Varsayılan modeller
-      const defaultModels = [
-        { name: 'llama2', description: 'Meta\'s Llama 2 model' },
-        { name: 'codellama', description: 'Meta\'s Code Llama model' },
-        { name: 'mistral', description: 'Mistral AI 7B model' },
-        { name: 'mixtral', description: 'Mistral AI\'s Mixtral 8x7B model' },
-        { name: 'neural-chat', description: 'Intel\'s neural chat model' },
-        { name: 'phi', description: 'Microsoft\'s Phi-2 model' },
-        { name: 'dolphin-phi', description: 'Phi-2 based chat model' },
-        { name: 'stablelm', description: 'Stability AI\'s LLM' },
-        { name: 'deepseek-coder', description: 'DeepSeek\'s coding model' },
-        { name: 'solar', description: 'Upstage\'s Solar model' }
-      ];
-
       // Yüklü modelleri al
       const response = await fetch('http://127.0.0.1:11434/api/tags');
       if (!response.ok) throw new Error('Failed to fetch models');
       const data = await response.json() as { models: ModelInfo[] };
       const installedModels = data.models || [];
 
-      // Tüm modelleri birleştir
-      const allModels: ModelInfo[] = [];
+      // Model açıklamalarını ekle
+      const modelsWithDescriptions = installedModels.map(model => ({
+        ...model,
+        description: model.name,
+        isInstalled: true
+      }));
 
-      // Önce yüklü modelleri ekle
-      installedModels.forEach(model => {
-        const defaultModel = defaultModels.find(m => m.name === model.name);
-        allModels.push({
-          ...model,
-          description: defaultModel?.description || model.name,
-          isInstalled: true
-        });
-      });
-
-      // Yüklü olmayan varsayılan modelleri ekle
-      defaultModels.forEach(model => {
-        if (!installedModels.some(m => m.name === model.name)) {
-          allModels.push({
-            name: model.name,
-            description: model.description,
-            size: 0,
-            digest: '',
-            modified_at: new Date().toISOString(),
-            isInstalled: false
-          });
-        }
-      });
-
-      return allModels;
+      // Modelleri alfabetik sırala
+      return modelsWithDescriptions.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
       console.error('Error listing models:', error);
       return [];

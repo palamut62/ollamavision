@@ -178,9 +178,64 @@ ipcMain.handle('run-command', async (_, command: string) => {
         case 'pull':
           if (parts.length < 3) return 'Usage: ollama pull <model>';
           const modelName = parts[2];
-          // İndirme işlemini başlat
-          downloadModel(modelName);
-          return `Downloading ${modelName}... Check the sidebar for progress.`;
+          
+          try {
+            console.log(`Starting download of model: ${modelName}`);
+            const response = await fetch('http://127.0.0.1:11434/api/pull', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ 
+                name: modelName
+              })
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Failed to start download: ${response.statusText}\n${errorText}`);
+            }
+
+            // Stream'i text olarak oku ve satır satır işle
+            const text = await response.text();
+            const lines = text.split('\n').filter(Boolean);
+            let lastProgress = -1;
+
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+                
+                if (data.status) {
+                  process.stdout.write(`\r${data.status}`);
+                }
+                
+                if (data.total && data.completed) {
+                  const progress = Math.round((data.completed / data.total) * 100);
+                  if (progress > lastProgress) {
+                    lastProgress = progress;
+                    process.stdout.write(`\rDownloading ${modelName}: ${progress}%`);
+                  }
+                }
+
+                if (data.error) {
+                  throw new Error(data.error);
+                }
+              } catch (e) {
+                if (e instanceof SyntaxError) continue;
+                throw e;
+              }
+            }
+
+            // İndirme tamamlandığında sidebar'ı güncelle
+            mainWindow?.webContents.send('refresh-models');
+            return `\nModel ${modelName} has been downloaded successfully.`;
+          } catch (error: any) {
+            console.error('Download error:', error);
+            if (error.message.includes('ECONNREFUSED')) {
+              return 'Error: Could not connect to Ollama. Make sure Ollama is running.';
+            }
+            return `Error downloading model: ${error.message}`;
+          }
 
         case 'rm':
         case 'remove':
@@ -191,8 +246,101 @@ ipcMain.handle('run-command', async (_, command: string) => {
 
         case 'run':
           if (parts.length < 3) return 'Usage: ollama run <model> [prompt]';
-          // TODO: Model çalıştırma işlemi eklenecek
-          return 'Model running is not implemented yet';
+          const runModelName = parts[2];
+          const prompt = parts.slice(3).join(' ');
+          
+          try {
+            // Önce modelin yüklü olup olmadığını kontrol et
+            const models = await listModels();
+            const modelExists = models.some(m => m.name === runModelName);
+            
+            if (!modelExists) {
+              // Model yüklü değil, indirmeyi başlat
+              console.log(`Model '${runModelName}' is not installed. Starting download...`);
+              
+              try {
+                const pullResponse = await fetch('http://127.0.0.1:11434/api/pull', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({ 
+                    name: runModelName
+                  })
+                });
+
+                if (!pullResponse.ok) {
+                  throw new Error(`Failed to download model: ${pullResponse.statusText}`);
+                }
+
+                const text = await pullResponse.text();
+                const lines = text.split('\n').filter(Boolean);
+                let lastStatus = '';
+
+                for (const line of lines) {
+                  try {
+                    const data = JSON.parse(line);
+                    
+                    if (data.status) {
+                      lastStatus = `Download status: ${data.status}`;
+                      console.log(lastStatus);
+                    }
+                    
+                    if (data.total && data.completed) {
+                      const progress = Math.round((data.completed / data.total) * 100);
+                      lastStatus = `Downloading ${runModelName}: ${progress}%`;
+                      console.log(lastStatus);
+                    }
+
+                    if (data.error) {
+                      throw new Error(data.error);
+                    }
+                  } catch (e) {
+                    if (e instanceof SyntaxError) continue;
+                    throw e;
+                  }
+                }
+
+                // İndirme tamamlandığında sidebar'ı güncelle
+                mainWindow?.webContents.send('refresh-models');
+                return lastStatus || `Model ${runModelName} download started. Please wait for completion.`;
+              } catch (pullError: any) {
+                return `Failed to download model: ${pullError.message}`;
+              }
+            }
+
+            console.log(`Running model ${runModelName} with prompt: ${prompt || 'default greeting'}`);
+            
+            const response = await fetch('http://127.0.0.1:11434/api/generate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: runModelName,
+                prompt: prompt || 'Hello! How can I help you today?',
+                stream: false,
+                options: {
+                  temperature: 0.7,
+                  top_p: 0.9
+                }
+              })
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              throw new Error(`Failed to run model: ${response.statusText}\n${errorText}`);
+            }
+
+            const data = await response.json() as { response: string };
+            return data.response || 'No response from model';
+          } catch (error: any) {
+            console.error('Error running model:', error);
+            if (error.message.includes('ECONNREFUSED')) {
+              return 'Error: Could not connect to Ollama. Make sure Ollama is running.';
+            }
+            return `Error running model: ${error.message}`;
+          }
 
         default:
           return `Unknown ollama command: ${subCommand}\nAvailable commands: list, pull, rm, run`;
@@ -368,19 +516,6 @@ async function listModels(): Promise<ModelInfo[]> {
   } catch (error) {
     console.error('Error listing models:', error);
     return [];
-  }
-}
-
-async function downloadModel(modelName: string): Promise<void> {
-  try {
-    const response = await fetch('http://127.0.0.1:11434/api/pull', {
-      method: 'POST',
-      body: JSON.stringify({ name: modelName }),
-    });
-    if (!response.ok) throw new Error('Failed to start download');
-  } catch (error) {
-    console.error('Error starting download:', error);
-    throw error;
   }
 }
 

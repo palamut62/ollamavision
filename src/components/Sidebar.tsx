@@ -66,9 +66,16 @@ const getModelIcon = (modelName: string) => {
   }
 };
 
+interface SystemInfoState {
+  cpuUsage?: number;
+  totalMemory?: number;
+  freeMemory?: number;
+  usedMemory?: number;
+}
+
 const Sidebar: React.FC = () => {
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const [systemInfo, setSystemInfo] = useState<any>(null);
+  const [systemInfo, setSystemInfo] = useState<SystemInfoState | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [modelToDelete, setModelToDelete] = useState<string | null>(null);
@@ -143,22 +150,50 @@ const Sidebar: React.FC = () => {
     // Sistem bilgilerini al
     const loadSystemInfo = async () => {
       try {
-        const info = await window.electronAPI.getSystemInfo();
-        setSystemInfo(info);
+        const detailedInfo = await window.electronAPI.getSystemInfo();
+        const systemInfo = {
+          cpuUsage: 0, // CPU kullanımı ayrı bir event ile geliyor
+          totalMemory: detailedInfo.memory.total,
+          freeMemory: detailedInfo.memory.free,
+          usedMemory: detailedInfo.memory.used
+        };
+        setSystemInfo(systemInfo);
       } catch (error) {
-        logger.error('Failed to get system info');
+        console.error('Failed to get system info:', error);
       }
     };
+
+    // Sistem bilgilerini dinle
+    const unsubscribeSystemInfo = window.electronAPI.onSystemInfo((info: SystemInfo) => {
+      setSystemInfo(prev => ({
+        ...prev,
+        cpuUsage: info.cpuUsage || 0,
+        totalMemory: info.totalMemory,
+        freeMemory: info.freeMemory
+      }));
+    });
+
+    // İlk yükleme
     loadSystemInfo();
 
-    // Sistem bilgilerini periyodik olarak güncelle
+    // Periyodik güncelleme
     const systemInfoInterval = setInterval(loadSystemInfo, 5000);
+
+    // Model listesi güncelleme event'ini dinle
+    const handleRefreshModels = () => {
+      console.log('Refreshing model list...');
+      fetchModels();
+    };
+
+    window.electron.ipcRenderer.on('refresh-models', handleRefreshModels);
 
     return () => {
       clearInterval(systemInfoInterval);
       unsubscribeOllama();
       unsubscribeRefresh();
       unsubscribeDownload();
+      unsubscribeSystemInfo();
+      window.electron.ipcRenderer.removeListener('refresh-models', handleRefreshModels);
     };
   }, []);
 
@@ -359,54 +394,25 @@ const Sidebar: React.FC = () => {
           </Box>
         ) : (
           <List sx={{ flex: 1, overflow: 'auto' }} dense>
-            {/* Yüklü modeller */}
-            {filteredModels.filter(model => model.isInstalled).map((model) => (
+            {filteredModels.map((model) => (
               <ListItem 
                 key={model.name} 
                 disablePadding
                 secondaryAction={
-                  model.isInstalled ? (
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={(e) => handleDeleteClick(e, model.name)}
-                      sx={{ 
-                        opacity: 0,
-                        transition: 'opacity 0.2s',
-                        '&:hover': { 
-                          color: 'error.main' 
-                        }
-                      }}
-                    >
-                      <DeleteIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                  ) : (
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={(e) => handleDownloadClick(e, model.name)}
-                      disabled={downloadProgress[model.name] !== undefined}
-                      sx={{ 
-                        opacity: 0.8,
-                        transition: 'opacity 0.2s',
-                        '&:hover': { 
-                          color: 'primary.main' 
-                        }
-                      }}
-                    >
-                      {downloadProgress[model.name] !== undefined ? (
-                        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                          <CircularProgress 
-                            size={16} 
-                            variant="determinate" 
-                            value={downloadProgress[model.name] || 0}
-                          />
-                        </Box>
-                      ) : (
-                        <DownloadIcon sx={{ fontSize: 16 }} />
-                      )}
-                    </IconButton>
-                  )
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    onClick={(e) => handleDeleteClick(e, model.name)}
+                    sx={{ 
+                      opacity: 0,
+                      transition: 'opacity 0.2s',
+                      '&:hover': { 
+                        color: 'error.main' 
+                      }
+                    }}
+                  >
+                    <DeleteIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
                 }
                 sx={{
                   '&:hover .MuiIconButton-root': {
@@ -416,13 +422,11 @@ const Sidebar: React.FC = () => {
               >
                 <ListItemButton
                   selected={selectedModel === model.name}
-                  onClick={() => model.isInstalled && handleModelSelect(model.name)}
-                  disabled={!model.isInstalled}
+                  onClick={() => handleModelSelect(model.name)}
                   sx={{
                     '&.Mui-selected': {
                       bgcolor: 'primary.dark',
-                    },
-                    opacity: model.isInstalled ? 1 : 0.5
+                    }
                   }}
                 >
                   <ListItemIcon sx={{ minWidth: 36 }}>
@@ -455,109 +459,7 @@ const Sidebar: React.FC = () => {
                       variant: 'body2',
                       component: 'div',
                       sx: { 
-                        fontWeight: selectedModel === model.name ? 'bold' : 'normal',
-                        color: model.isInstalled ? 'text.primary' : 'text.secondary'
-                      }
-                    }}
-                    secondaryTypographyProps={{
-                      component: 'div'
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            ))}
-
-            {/* Ayraç ve başlık */}
-            {filteredModels.some(m => !m.isInstalled) && (
-              <Box 
-                sx={{ 
-                  px: 2, 
-                  py: 1,
-                  borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
-                  bgcolor: 'background.default'
-                }}
-              >
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    color: 'text.secondary',
-                    fontSize: '0.7rem',
-                    fontWeight: 500
-                  }}
-                >
-                  AVAILABLE MODELS
-                </Typography>
-              </Box>
-            )}
-
-            {/* Yüklü olmayan modeller */}
-            {filteredModels.filter(model => !model.isInstalled).map((model) => (
-              <ListItem 
-                key={model.name} 
-                disablePadding
-                secondaryAction={
-                  <IconButton
-                    edge="end"
-                    size="small"
-                    onClick={(e) => handleDownloadClick(e, model.name)}
-                    disabled={downloadProgress[model.name] !== undefined}
-                    sx={{ 
-                      opacity: 0.8,
-                      transition: 'opacity 0.2s',
-                      '&:hover': { 
-                        color: 'primary.main' 
-                      }
-                    }}
-                  >
-                    {downloadProgress[model.name] !== undefined ? (
-                      <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                        <CircularProgress 
-                          size={16} 
-                          variant="determinate" 
-                          value={downloadProgress[model.name] || 0}
-                        />
-                      </Box>
-                    ) : (
-                      <DownloadIcon sx={{ fontSize: 16 }} />
-                    )}
-                  </IconButton>
-                }
-                sx={{
-                  '&:hover .MuiIconButton-root': {
-                    opacity: 1
-                  }
-                }}
-              >
-                <ListItemButton
-                  disabled={true}
-                  sx={{
-                    opacity: 0.5
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 36 }}>
-                    {getModelIcon(model.name)}
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary={model.name}
-                    secondary={
-                      <Box component="div" sx={{ mt: 0.5 }}>
-                        <Typography 
-                          component="div"
-                          variant="caption" 
-                          sx={{ 
-                            color: 'text.secondary',
-                            fontSize: '0.7rem'
-                          }}
-                        >
-                          {formatBytes(model.size)}
-                        </Typography>
-                      </Box>
-                    }
-                    primaryTypographyProps={{ 
-                      variant: 'body2',
-                      sx: { 
-                        color: 'text.secondary'
+                        fontWeight: selectedModel === model.name ? 'bold' : 'normal'
                       }
                     }}
                     secondaryTypographyProps={{
@@ -589,7 +491,7 @@ const Sidebar: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <StorageIcon sx={{ mr: 1, fontSize: 20 }} />
             <Typography variant="body2">
-              Memory: {formatBytes(systemInfo?.freeMemory)} / {formatBytes(systemInfo?.totalMemory)}
+              RAM: {systemInfo ? `${formatBytes(systemInfo.freeMemory)} free of ${formatBytes(systemInfo.totalMemory)}` : 'N/A'}
             </Typography>
           </Box>
         </Box>
