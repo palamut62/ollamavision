@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import '@xterm/xterm/css/xterm.css';
-import { Box, IconButton, Paper } from '@mui/material';
+import { Box, IconButton, Paper, useTheme } from '@mui/material';
 import { Close, Remove, DragHandle } from '@mui/icons-material';
 import { eventBus } from '../services/EventBus';
 import { logger } from '../services/LogService';
@@ -15,6 +15,8 @@ interface TerminalProps {
 }
 
 const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
   const terminalRef = useRef<HTMLDivElement>(null);
   const commandBufferRef = useRef('');
   const [terminal, setTerminal] = useState<XTerm | null>(null);
@@ -61,32 +63,52 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
       cursorBlink: true,
       fontSize: 14,
       fontFamily: 'Consolas, monospace',
-      theme: {
+      theme: isDarkMode ? {
         background: '#1e1e1e',
-        foreground: '#ffffff',
-        cursor: '#ffffff',
-        cursorAccent: '#000000',
+        foreground: '#d4d4d4',
+        cursor: '#d4d4d4',
+        cursorAccent: '#1e1e1e',
         selectionBackground: '#264f78',
+        black: '#1e1e1e',
+        red: '#f44747',
+        green: '#6a9955',
+        yellow: '#d7ba7d',
+        blue: '#569cd6',
+        magenta: '#c586c0',
+        cyan: '#4dc9b0',
+        white: '#d4d4d4',
+        brightBlack: '#808080',
+        brightRed: '#f44747',
+        brightGreen: '#6a9955',
+        brightYellow: '#d7ba7d',
+        brightBlue: '#569cd6',
+        brightMagenta: '#c586c0',
+        brightCyan: '#4dc9b0',
+        brightWhite: '#d4d4d4'
+      } : {
+        background: '#ffffff',
+        foreground: '#333333',
+        cursor: '#333333',
+        cursorAccent: '#ffffff',
+        selectionBackground: '#add6ff',
         black: '#000000',
-        red: '#ee4444',
-        green: '#44ee44',
-        yellow: '#eeee44',
-        blue: '#4444ee',
-        magenta: '#ee44ee',
-        cyan: '#44eeee',
-        white: '#eeeeee',
+        red: '#cd3131',
+        green: '#00bc00',
+        yellow: '#949800',
+        blue: '#0451a5',
+        magenta: '#bc05bc',
+        cyan: '#0598bc',
+        white: '#555555',
         brightBlack: '#666666',
-        brightRed: '#ff4444',
-        brightGreen: '#44ff44',
-        brightYellow: '#ffff44',
-        brightBlue: '#4444ff',
-        brightMagenta: '#ff44ff',
-        brightCyan: '#44ffff',
-        brightWhite: '#ffffff'
+        brightRed: '#cd3131',
+        brightGreen: '#14ce14',
+        brightYellow: '#b5ba00',
+        brightBlue: '#0451a5',
+        brightMagenta: '#bc05bc',
+        brightCyan: '#0598bc',
+        brightWhite: '#a5a5a5'
       },
       convertEol: true,
-      cols: 120,
-      rows: 30,
       scrollback: 1000,
       rightClickSelectsWord: true,
       allowTransparency: true
@@ -94,22 +116,34 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
 
     const newFitAddon = new FitAddon();
     const webLinksAddon = new WebLinksAddon();
-    const webglAddon = new WebglAddon();
+    let webglAddon: WebglAddon | null = null;
 
     term.loadAddon(newFitAddon);
     term.loadAddon(webLinksAddon);
+
+    term.open(terminalRef.current);
+
     try {
+      webglAddon = new WebglAddon();
       term.loadAddon(webglAddon);
+      webglAddon.onContextLoss(() => {
+        webglAddon?.dispose();
+      });
     } catch (e) {
       console.warn('WebGL addon could not be loaded', e);
     }
 
-    term.open(terminalRef.current);
-    newFitAddon.fit();
+    setTimeout(() => {
+      try {
+        newFitAddon.fit();
+      } catch (e) {
+        console.warn('Failed to fit terminal:', e);
+      }
+    }, 0);
 
-    // Kopyalama ve yapıştırma için event listener'lar
+    term.write('Desktop Agent Terminal\r\nType "help" for available commands\r\n\r\n$ ');
+
     term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
-      // Ctrl+C (Kopyalama)
       if (event.ctrlKey && event.key === 'c' && term.hasSelection()) {
         const selection = term.getSelection();
         if (selection) {
@@ -118,7 +152,6 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
         return false;
       }
       
-      // Ctrl+V (Yapıştırma)
       if (event.ctrlKey && event.key === 'v') {
         navigator.clipboard.readText().then(text => {
           text.split('').forEach(char => {
@@ -133,7 +166,6 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
         return false;
       }
 
-      // Ctrl+L (Temizleme)
       if (event.ctrlKey && event.key === 'l') {
         term.clear();
         term.write('\r\n$ ');
@@ -144,7 +176,6 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
       return true;
     });
 
-    // Sağ tık menüsü için event listener
     terminalRef.current.addEventListener('contextmenu', (e: MouseEvent) => {
       e.preventDefault();
       if (term.hasSelection()) {
@@ -155,10 +186,8 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
       }
     });
 
-    term.write('Desktop Agent Terminal\r\nType "help" for available commands\r\n\r\n$ ');
-
     term.onData((data) => {
-      if (data === '\r') { // Enter tuşu
+      if (data === '\r') {
         const command = commandBufferRef.current.trim();
         if (command) {
           term.write('\r\n');
@@ -166,7 +195,6 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
             term.clear();
             term.write('$ ');
           } else {
-            // Komutu çalıştır
             window.electronAPI.runCommand(command).then((output: string) => {
               if (output) {
                 term.write(output.replace(/\n/g, '\r\n'));
@@ -180,12 +208,12 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
           term.write('\r\n$ ');
         }
         commandBufferRef.current = '';
-      } else if (data === '\u007f') { // Backspace
+      } else if (data === '\u007f') {
         if (commandBufferRef.current.length > 0) {
           commandBufferRef.current = commandBufferRef.current.slice(0, -1);
           term.write('\b \b');
         }
-      } else if (data === '\u0003') { // Ctrl+C
+      } else if (data === '\u0003') {
         if (term.hasSelection()) {
           const selection = term.getSelection();
           if (selection) {
@@ -202,7 +230,11 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
     });
 
     const handleResize = () => {
-      newFitAddon.fit();
+      try {
+        newFitAddon.fit();
+      } catch (e) {
+        console.warn('Failed to resize terminal:', e);
+      }
     };
 
     window.addEventListener('resize', handleResize);
@@ -211,9 +243,62 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      webglAddon?.dispose();
       term.dispose();
     };
-  }, []);
+  }, [isDarkMode]);
+
+  useEffect(() => {
+    if (!terminal) return;
+
+    const terminalTheme = isDarkMode ? {
+      background: '#1e1e1e',
+      foreground: '#d4d4d4',
+      cursor: '#d4d4d4',
+      cursorAccent: '#1e1e1e',
+      selectionBackground: '#264f78',
+      black: '#1e1e1e',
+      red: '#f44747',
+      green: '#6a9955',
+      yellow: '#d7ba7d',
+      blue: '#569cd6',
+      magenta: '#c586c0',
+      cyan: '#4dc9b0',
+      white: '#d4d4d4',
+      brightBlack: '#808080',
+      brightRed: '#f44747',
+      brightGreen: '#6a9955',
+      brightYellow: '#d7ba7d',
+      brightBlue: '#569cd6',
+      brightMagenta: '#c586c0',
+      brightCyan: '#4dc9b0',
+      brightWhite: '#d4d4d4'
+    } : {
+      background: '#ffffff',
+      foreground: '#333333',
+      cursor: '#333333',
+      cursorAccent: '#ffffff',
+      selectionBackground: '#add6ff',
+      black: '#000000',
+      red: '#cd3131',
+      green: '#00bc00',
+      yellow: '#949800',
+      blue: '#0451a5',
+      magenta: '#bc05bc',
+      cyan: '#0598bc',
+      white: '#555555',
+      brightBlack: '#666666',
+      brightRed: '#cd3131',
+      brightGreen: '#14ce14',
+      brightYellow: '#b5ba00',
+      brightBlue: '#0451a5',
+      brightMagenta: '#bc05bc',
+      brightCyan: '#0598bc',
+      brightWhite: '#a5a5a5'
+    };
+
+    terminal.options.theme = terminalTheme;
+  }, [isDarkMode, terminal]);
 
   return (
     <Paper
@@ -224,8 +309,9 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        bgcolor: '#1e1e1e',
-        border: '1px solid #333',
+        bgcolor: isDarkMode ? '#1e1e1e' : '#ffffff',
+        border: '1px solid',
+        borderColor: isDarkMode ? '#333' : '#e0e0e0',
         transition: isDragging ? 'none' : 'height 0.2s',
         position: 'absolute',
         bottom: 0,
@@ -236,8 +322,9 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          bgcolor: '#252526',
-          borderBottom: '1px solid #333',
+          bgcolor: isDarkMode ? '#252526' : '#f5f5f5',
+          borderBottom: '1px solid',
+          borderColor: isDarkMode ? '#333' : '#e0e0e0',
           px: 1,
           py: 0.5,
           cursor: isDragging ? 'row-resize' : 'default',
@@ -247,7 +334,7 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
           display: 'flex', 
           alignItems: 'center', 
           gap: 1,
-          color: '#d4d4d4', 
+          color: isDarkMode ? '#d4d4d4' : '#333333', 
           fontSize: '0.9rem' 
         }}>
           <DragHandle 
@@ -264,10 +351,10 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
           Terminal
         </Box>
         <Box>
-          <IconButton size="small" onClick={onMinimize} sx={{ color: '#d4d4d4' }}>
+          <IconButton size="small" onClick={onMinimize} sx={{ color: isDarkMode ? '#d4d4d4' : '#333333' }}>
             <Remove fontSize="small" />
           </IconButton>
-          <IconButton size="small" onClick={onClose} sx={{ color: '#d4d4d4' }}>
+          <IconButton size="small" onClick={onClose} sx={{ color: isDarkMode ? '#d4d4d4' : '#333333' }}>
             <Close fontSize="small" />
           </IconButton>
         </Box>
@@ -276,7 +363,7 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
         ref={terminalRef}
         sx={{
           flex: 1,
-          bgcolor: '#1e1e1e',
+          bgcolor: isDarkMode ? '#1e1e1e' : '#ffffff',
           '& .xterm': {
             padding: '4px',
           },

@@ -155,7 +155,7 @@ const HelpPage: React.FC<HelpPageProps> = ({ onClose }) => {
           <h2>🔗 More Information</h2>
           <p>
             For more information, visit:
-            <a href="https://github.com/ollama/ollama" target="_blank" rel="noopener noreferrer">
+            <a href="https://github.com/palamut62/ollamavision" target="_blank" rel="noopener noreferrer">
               https://github.com/ollama/ollama
             </a>
           </p>
