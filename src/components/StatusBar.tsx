@@ -22,6 +22,8 @@ import { eventBus } from '../services/EventBus';
 import { OllamaManager } from '../services/OllamaManager';
 import LinearProgress from '@mui/material/LinearProgress';
 import CancelIcon from '@mui/icons-material/Cancel';
+import TerminalIcon from '@mui/icons-material/Terminal';
+import TerminalManager from './TerminalManager';
 
 const StatusBar: React.FC = () => {
   const [ollamaStatus, setOllamaStatus] = useState<'running' | 'stopped' | 'not-installed'>('stopped');
@@ -38,6 +40,7 @@ const StatusBar: React.FC = () => {
     modelName: string;
     progress: number;
   } | null>(null);
+  const [isTerminalVisible, setIsTerminalVisible] = useState(false);
 
   useEffect(() => {
     checkOllamaInstallation();
@@ -177,6 +180,10 @@ const StatusBar: React.FC = () => {
         console.error('Failed to cancel download:', error);
       }
     }
+  };
+
+  const handleToggleTerminal = () => {
+    setIsTerminalVisible(!isTerminalVisible);
   };
 
   return (
@@ -348,6 +355,22 @@ const StatusBar: React.FC = () => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Tooltip title="Terminal">
+              <IconButton
+                size="small"
+                onClick={handleToggleTerminal}
+                sx={{ 
+                  width: 16,
+                  height: 16,
+                  '& .MuiSvgIcon-root': {
+                    fontSize: 14
+                  }
+                }}
+              >
+                <TerminalIcon />
+              </IconButton>
+            </Tooltip>
+
             <Tooltip title="Developer">
               <IconButton
                 size="small"
@@ -458,6 +481,11 @@ const StatusBar: React.FC = () => {
           {notification.message}
         </Alert>
       </Snackbar>
+
+      <TerminalManager 
+        isVisible={isTerminalVisible} 
+        onClose={() => setIsTerminalVisible(false)} 
+      />
     </>
   );
 };

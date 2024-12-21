@@ -27,6 +27,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
 import TextField from '@mui/material/TextField';
+import Resizable from './Resizable';
 
 // Model tipini belirle
 const getModelType = (modelName: string): 'code' | 'vision' | 'text' => {
@@ -273,88 +274,207 @@ const Sidebar: React.FC = () => {
   );
 
   return (
-    <Box sx={{ 
-      width: 250, 
-      bgcolor: 'background.paper',
-      borderRight: '1px solid rgba(255, 255, 255, 0.12)',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      <Box sx={{ p: 2, borderBottom: '1px solid rgba(255, 255, 255, 0.12)' }}>
-        <Typography variant="subtitle2" color="primary" gutterBottom>
-          MODELS
-        </Typography>
-        <TextField
-          fullWidth
-          size="small"
-          placeholder="Search models..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-              </InputAdornment>
-            ),
-            sx: {
-              fontSize: '0.8rem',
-              '& .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 255, 255, 0.12)'
-              },
-              '&:hover .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'rgba(255, 255, 255, 0.2)'
-              },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                borderColor: 'primary.main'
-              }
-            }
-          }}
-        />
-      </Box>
-      
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-          <CircularProgress size={24} />
-        </Box>
-      ) : filteredModels.length === 0 ? (
-        <Box sx={{ 
-          p: 2, 
-          textAlign: 'center',
-          color: 'text.secondary'
-        }}>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            {models.length === 0 ? 'No models available' : 'No models found'}
+    <Resizable width={250} minWidth={200} maxWidth={400}>
+      <Box sx={{ 
+        height: '100%',
+        bgcolor: 'background.paper',
+        borderRight: '1px solid',
+        borderColor: 'divider',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        <Box sx={{ p: 2, borderBottom: '1px solid rgba(255, 255, 255, 0.12)' }}>
+          <Typography variant="subtitle2" color="primary" gutterBottom>
+            MODELS
           </Typography>
-          {models.length === 0 && (
-            <Typography variant="caption">
-              Make sure Ollama is running
-            </Typography>
-          )}
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search models..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                </InputAdornment>
+              ),
+              sx: {
+                fontSize: '0.8rem',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255, 255, 255, 0.12)'
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(255, 255, 255, 0.2)'
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main'
+                }
+              }
+            }}
+          />
         </Box>
-      ) : (
-        <List sx={{ flex: 1, overflow: 'auto' }} dense>
-          {/* Yüklü modeller */}
-          {filteredModels.filter(model => model.isInstalled).map((model) => (
-            <ListItem 
-              key={model.name} 
-              disablePadding
-              secondaryAction={
-                model.isInstalled ? (
-                  <IconButton
-                    edge="end"
-                    size="small"
-                    onClick={(e) => handleDeleteClick(e, model.name)}
-                    sx={{ 
-                      opacity: 0,
-                      transition: 'opacity 0.2s',
-                      '&:hover': { 
-                        color: 'error.main' 
+        
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
+        ) : filteredModels.length === 0 ? (
+          <Box sx={{ 
+            p: 2, 
+            textAlign: 'center',
+            color: 'text.secondary'
+          }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              {models.length === 0 ? 'No models available' : 'No models found'}
+            </Typography>
+            {models.length === 0 && (
+              <Typography variant="caption">
+                Make sure Ollama is running
+              </Typography>
+            )}
+          </Box>
+        ) : (
+          <List sx={{ flex: 1, overflow: 'auto' }} dense>
+            {/* Yüklü modeller */}
+            {filteredModels.filter(model => model.isInstalled).map((model) => (
+              <ListItem 
+                key={model.name} 
+                disablePadding
+                secondaryAction={
+                  model.isInstalled ? (
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => handleDeleteClick(e, model.name)}
+                      sx={{ 
+                        opacity: 0,
+                        transition: 'opacity 0.2s',
+                        '&:hover': { 
+                          color: 'error.main' 
+                        }
+                      }}
+                    >
+                      <DeleteIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  ) : (
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => handleDownloadClick(e, model.name)}
+                      disabled={downloadProgress[model.name] !== undefined}
+                      sx={{ 
+                        opacity: 0.8,
+                        transition: 'opacity 0.2s',
+                        '&:hover': { 
+                          color: 'primary.main' 
+                        }
+                      }}
+                    >
+                      {downloadProgress[model.name] !== undefined ? (
+                        <Box sx={{ position: 'relative', display: 'inline-flex' }}>
+                          <CircularProgress 
+                            size={16} 
+                            variant="determinate" 
+                            value={downloadProgress[model.name] || 0}
+                          />
+                        </Box>
+                      ) : (
+                        <DownloadIcon sx={{ fontSize: 16 }} />
+                      )}
+                    </IconButton>
+                  )
+                }
+                sx={{
+                  '&:hover .MuiIconButton-root': {
+                    opacity: 1
+                  }
+                }}
+              >
+                <ListItemButton
+                  selected={selectedModel === model.name}
+                  onClick={() => model.isInstalled && handleModelSelect(model.name)}
+                  disabled={!model.isInstalled}
+                  sx={{
+                    '&.Mui-selected': {
+                      bgcolor: 'primary.dark',
+                    },
+                    opacity: model.isInstalled ? 1 : 0.5
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    {getModelIcon(model.name)}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={model.name}
+                    secondary={
+                      <Box component="div" sx={{ mt: 0.5 }}>
+                        <Box component="div" sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 1
+                        }}>
+                          <Typography 
+                            component="div"
+                            variant="caption" 
+                            sx={{ 
+                              color: 'text.secondary',
+                              fontSize: '0.7rem',
+                              minWidth: 'fit-content'
+                            }}
+                          >
+                            {formatBytes(model.size)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    }
+                    primaryTypographyProps={{ 
+                      variant: 'body2',
+                      component: 'div',
+                      sx: { 
+                        fontWeight: selectedModel === model.name ? 'bold' : 'normal',
+                        color: model.isInstalled ? 'text.primary' : 'text.secondary'
                       }
                     }}
-                  >
-                    <DeleteIcon sx={{ fontSize: 16 }} />
-                  </IconButton>
-                ) : (
+                    secondaryTypographyProps={{
+                      component: 'div'
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+
+            {/* Ayraç ve başlık */}
+            {filteredModels.some(m => !m.isInstalled) && (
+              <Box 
+                sx={{ 
+                  px: 2, 
+                  py: 1,
+                  borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+                  bgcolor: 'background.default'
+                }}
+              >
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    color: 'text.secondary',
+                    fontSize: '0.7rem',
+                    fontWeight: 500
+                  }}
+                >
+                  AVAILABLE MODELS
+                </Typography>
+              </Box>
+            )}
+
+            {/* Yüklü olmayan modeller */}
+            {filteredModels.filter(model => !model.isInstalled).map((model) => (
+              <ListItem 
+                key={model.name} 
+                disablePadding
+                secondaryAction={
                   <IconButton
                     edge="end"
                     size="small"
@@ -380,227 +500,112 @@ const Sidebar: React.FC = () => {
                       <DownloadIcon sx={{ fontSize: 16 }} />
                     )}
                   </IconButton>
-                )
-              }
-              sx={{
-                '&:hover .MuiIconButton-root': {
-                  opacity: 1
                 }
-              }}
-            >
-              <ListItemButton
-                selected={selectedModel === model.name}
-                onClick={() => model.isInstalled && handleModelSelect(model.name)}
-                disabled={!model.isInstalled}
                 sx={{
-                  '&.Mui-selected': {
-                    bgcolor: 'primary.dark',
-                  },
-                  opacity: model.isInstalled ? 1 : 0.5
+                  '&:hover .MuiIconButton-root': {
+                    opacity: 1
+                  }
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  {getModelIcon(model.name)}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={model.name}
-                  secondary={
-                    <Box component="div" sx={{ mt: 0.5 }}>
-                      <Box component="div" sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: 1
-                      }}>
+                <ListItemButton
+                  disabled={true}
+                  sx={{
+                    opacity: 0.5
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    {getModelIcon(model.name)}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={model.name}
+                    secondary={
+                      <Box component="div" sx={{ mt: 0.5 }}>
                         <Typography 
                           component="div"
                           variant="caption" 
                           sx={{ 
                             color: 'text.secondary',
-                            fontSize: '0.7rem',
-                            minWidth: 'fit-content'
+                            fontSize: '0.7rem'
                           }}
                         >
                           {formatBytes(model.size)}
                         </Typography>
                       </Box>
-                    </Box>
-                  }
-                  primaryTypographyProps={{ 
-                    variant: 'body2',
-                    component: 'div',
-                    sx: { 
-                      fontWeight: selectedModel === model.name ? 'bold' : 'normal',
-                      color: model.isInstalled ? 'text.primary' : 'text.secondary'
                     }
-                  }}
-                  secondaryTypographyProps={{
-                    component: 'div'
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
+                    primaryTypographyProps={{ 
+                      variant: 'body2',
+                      sx: { 
+                        color: 'text.secondary'
+                      }
+                    }}
+                    secondaryTypographyProps={{
+                      component: 'div'
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        )}
 
-          {/* Ayraç ve başlık */}
-          {filteredModels.some(m => !m.isInstalled) && (
-            <Box 
-              sx={{ 
-                px: 2, 
-                py: 1,
-                borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
-                bgcolor: 'background.default'
-              }}
-            >
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: 'text.secondary',
-                  fontSize: '0.7rem',
-                  fontWeight: 500
-                }}
-              >
-                AVAILABLE MODELS
-              </Typography>
-            </Box>
-          )}
-
-          {/* Yüklü olmayan modeller */}
-          {filteredModels.filter(model => !model.isInstalled).map((model) => (
-            <ListItem 
-              key={model.name} 
-              disablePadding
-              secondaryAction={
-                <IconButton
-                  edge="end"
-                  size="small"
-                  onClick={(e) => handleDownloadClick(e, model.name)}
-                  disabled={downloadProgress[model.name] !== undefined}
-                  sx={{ 
-                    opacity: 0.8,
-                    transition: 'opacity 0.2s',
-                    '&:hover': { 
-                      color: 'primary.main' 
-                    }
-                  }}
-                >
-                  {downloadProgress[model.name] !== undefined ? (
-                    <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                      <CircularProgress 
-                        size={16} 
-                        variant="determinate" 
-                        value={downloadProgress[model.name] || 0}
-                      />
-                    </Box>
-                  ) : (
-                    <DownloadIcon sx={{ fontSize: 16 }} />
-                  )}
-                </IconButton>
-              }
-              sx={{
-                '&:hover .MuiIconButton-root': {
-                  opacity: 1
-                }
-              }}
-            >
-              <ListItemButton
-                disabled={true}
-                sx={{
-                  opacity: 0.5
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  {getModelIcon(model.name)}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={model.name}
-                  secondary={
-                    <Box component="div" sx={{ mt: 0.5 }}>
-                      <Typography 
-                        component="div"
-                        variant="caption" 
-                        sx={{ 
-                          color: 'text.secondary',
-                          fontSize: '0.7rem'
-                        }}
-                      >
-                        {formatBytes(model.size)}
-                      </Typography>
-                    </Box>
-                  }
-                  primaryTypographyProps={{ 
-                    variant: 'body2',
-                    sx: { 
-                      color: 'text.secondary'
-                    }
-                  }}
-                  secondaryTypographyProps={{
-                    component: 'div'
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      )}
-
-      <Box sx={{ 
-        p: 2, 
-        borderTop: '1px solid rgba(255, 255, 255, 0.12)',
-        bgcolor: 'background.paper'
-      }}>
-        <Typography variant="subtitle2" color="primary" gutterBottom>
-          SYSTEM INFO
-        </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <MemoryIcon sx={{ mr: 1, fontSize: 20 }} />
-          <Typography variant="body2">
-            CPU: {systemInfo?.cpuUsage ? `${systemInfo.cpuUsage.toFixed(1)}%` : 'N/A'}
+        <Box sx={{ 
+          p: 2, 
+          borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+          bgcolor: 'background.paper'
+        }}>
+          <Typography variant="subtitle2" color="primary" gutterBottom>
+            SYSTEM INFO
           </Typography>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+            <MemoryIcon sx={{ mr: 1, fontSize: 20 }} />
+            <Typography variant="body2">
+              CPU: {systemInfo?.cpuUsage ? `${systemInfo.cpuUsage.toFixed(1)}%` : 'N/A'}
+            </Typography>
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <StorageIcon sx={{ mr: 1, fontSize: 20 }} />
+            <Typography variant="body2">
+              Memory: {formatBytes(systemInfo?.freeMemory)} / {formatBytes(systemInfo?.totalMemory)}
+            </Typography>
+          </Box>
         </Box>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <StorageIcon sx={{ mr: 1, fontSize: 20 }} />
-          <Typography variant="body2">
-            Memory: {formatBytes(systemInfo?.freeMemory)} / {formatBytes(systemInfo?.totalMemory)}
-          </Typography>
-        </Box>
+
+        <Dialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+        >
+          <DialogTitle>
+            Delete Model
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              Are you sure you want to delete {modelToDelete}? This will remove the model from your computer.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => setDeleteDialogOpen(false)} 
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteConfirm} 
+              color="error" 
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <CircularProgress size={20} />
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
-
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-      >
-        <DialogTitle>
-          Delete Model
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            Are you sure you want to delete {modelToDelete}? This will remove the model from your computer.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => setDeleteDialogOpen(false)} 
-            disabled={isDeleting}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleDeleteConfirm} 
-            color="error" 
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <CircularProgress size={20} />
-            ) : (
-              'Delete'
-            )}
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+    </Resizable>
   );
 };
 

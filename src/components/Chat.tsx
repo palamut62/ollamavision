@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import IconButton from '@mui/material/IconButton';
 import SendIcon from '@mui/icons-material/Send';
+import CloseIcon from '@mui/icons-material/Close';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useChatStore } from '../store/chatStore';
 import { OllamaManager } from '../services/OllamaManager';
@@ -27,7 +28,9 @@ const Chat: React.FC = () => {
     selectedModel,
     selectedChatId,
     chats,
-    addMessageToChat
+    addMessageToChat,
+    setIsChatOpen,
+    setSelectedModel
   } = useChatStore();
 
   const [input, setInput] = useState('');
@@ -213,6 +216,11 @@ const Chat: React.FC = () => {
     }
   };
 
+  const handleClose = () => {
+    setIsChatOpen(false);
+    setSelectedModel(null);
+  };
+
   if (!selectedChat) {
     return null;
   }
@@ -225,9 +233,27 @@ const Chat: React.FC = () => {
       overflow: 'hidden',
       p: 2
     }}>
-      <Typography variant="h6" gutterBottom>
-        {selectedChat.title}
-      </Typography>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        mb: 2
+      }}>
+        <Typography variant="h6">
+          {selectedChat.title}
+        </Typography>
+        <IconButton
+          size="small"
+          onClick={handleClose}
+          sx={{ 
+            width: 24,
+            height: 24,
+            '& .MuiSvgIcon-root': { fontSize: 16 }
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </Box>
 
       <Box sx={{ 
         flex: 1,

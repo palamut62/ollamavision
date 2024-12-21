@@ -141,11 +141,14 @@ ipcMain.handle('ollama-check-status', async () => {
 // Terminal komutu çalıştırma
 ipcMain.handle('run-command', async (_event, command: string) => {
   try {
-    const { stdout } = await execAsync(command);
-    return stdout.trim();
-  } catch (error) {
+    const { stdout, stderr } = await execAsync(command, {
+      shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/bash',
+      cwd: process.cwd()
+    });
+    return stdout || stderr;
+  } catch (error: any) {
     console.error('Komut çalıştırma hatası:', error);
-    return '';
+    return error.message || 'Komut çalıştırılırken bir hata oluştu';
   }
 });
 
