@@ -11,16 +11,18 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoIcon from '@mui/icons-material/Info';
+import HelpIcon from '@mui/icons-material/Help';
 import { useAuthStore } from '@/store/authStore';
-import { OllamaManager } from '@/services/OllamaManager';
 import { eventBus } from '@/services/EventBus';
 import SettingsDialog from './SettingsDialog';
+import HelpPage from './HelpPage';
 
 const MenuBar: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<{
     [key: string]: HTMLElement | null;
   }>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const { logout } = useAuthStore();
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, menuId: string) => {
@@ -66,6 +68,11 @@ const MenuBar: React.FC = () => {
     handleClose('file');
   };
 
+  const handleOpenHelp = () => {
+    setShowHelp(true);
+    handleClose('help');
+  };
+
   const menuItems = {
     file: [
       { label: 'Settings', icon: <SettingsIcon fontSize="small" />, onClick: handleOpenSettings },
@@ -78,6 +85,7 @@ const MenuBar: React.FC = () => {
       { label: 'Clear All Chats', icon: <DeleteIcon fontSize="small" /> }
     ],
     help: [
+      { label: 'Help', icon: <HelpIcon fontSize="small" />, onClick: handleOpenHelp },
       { label: 'Ollama Website', onClick: handleOpenOllamaWebsite },
       { type: 'divider' },
       { label: 'About', icon: <InfoIcon fontSize="small" />, onClick: handleOpenAbout }
@@ -164,6 +172,8 @@ const MenuBar: React.FC = () => {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
+
+      {showHelp && <HelpPage onClose={() => setShowHelp(false)} />}
     </>
   );
 };

@@ -1,0 +1,241 @@
+.help-page {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  max-width: 900px;
+  height: 80vh;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+}
+
+/* Light Theme */
+.help-page.light {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+.light .help-header {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.light .help-header h1 {
+  color: #111827;
+}
+
+.light .close-button {
+  color: #6b7280;
+}
+
+.light .close-button:hover {
+  background-color: #f3f4f6;
+}
+
+.light .help-content h2 {
+  color: #111827;
+}
+
+.light .help-content p,
+.light .help-content li {
+  color: #4b5563;
+}
+
+.light .command-table th,
+.light .shortcut-table th {
+  background-color: #f9fafb;
+  color: #374151;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.light .command-table td,
+.light .shortcut-table td {
+  border-bottom: 1px solid #e5e7eb;
+  color: #4b5563;
+}
+
+.light .command-table tr:hover,
+.light .shortcut-table tr:hover {
+  background-color: #f9fafb;
+}
+
+.light a {
+  color: #6366f1;
+}
+
+.light a:hover {
+  color: #4f46e5;
+}
+
+/* Dark Theme */
+.help-page.dark {
+  background-color: #1f2937;
+  color: #f3f4f6;
+}
+
+.dark .help-header {
+  border-bottom: 1px solid #374151;
+}
+
+.dark .help-header h1 {
+  color: #f3f4f6;
+}
+
+.dark .close-button {
+  color: #9ca3af;
+}
+
+.dark .close-button:hover {
+  background-color: #374151;
+}
+
+.dark .help-content h2 {
+  color: #f3f4f6;
+}
+
+.dark .help-content p,
+.dark .help-content li {
+  color: #d1d5db;
+}
+
+.dark .command-table th,
+.dark .shortcut-table th {
+  background-color: #374151;
+  color: #f3f4f6;
+  border-bottom: 2px solid #4b5563;
+}
+
+.dark .command-table td,
+.dark .shortcut-table td {
+  border-bottom: 1px solid #4b5563;
+  color: #d1d5db;
+}
+
+.dark .command-table tr:hover,
+.dark .shortcut-table tr:hover {
+  background-color: #374151;
+}
+
+.dark a {
+  color: #818cf8;
+}
+
+.dark a:hover {
+  color: #6366f1;
+}
+
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+}
+
+.help-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.help-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.help-content section {
+  margin-bottom: 2rem;
+}
+
+.help-content h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.help-content p {
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.help-content ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.help-content li {
+  padding: 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.help-content li::before {
+  content: "•";
+  color: #6366f1;
+  font-weight: bold;
+  margin-right: 0.5rem;
+}
+
+.command-table table,
+.shortcut-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.command-table th,
+.shortcut-table th {
+  text-align: left;
+  padding: 0.75rem;
+  font-weight: 600;
+}
+
+.command-table td,
+.shortcut-table td {
+  padding: 0.75rem;
+}
+
+.shortcut-table h3 {
+  font-size: 1rem;
+  margin: 1.5rem 0 0.5rem 0;
+}
+
+a {
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .help-page {
+    width: 95%;
+    height: 90vh;
+  }
+
+  .help-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .help-content {
+    padding: 1rem;
+  }
+} 

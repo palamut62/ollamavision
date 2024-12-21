@@ -66,19 +66,7 @@ export interface ElectronAPI {
 
 declare global {
   interface Window {
-    electronAPI: {
-      // Sistem bilgileri
-      getSystemInfo: () => Promise<DetailedSystemInfo>;
-      checkOllamaStatus: () => Promise<boolean>;
-      onSystemInfo: (callback: (info: SystemInfo) => void) => (() => void);
-
-      // Ollama yönetimi
-      startOllama: () => Promise<boolean>;
-      listModels: () => Promise<ModelInfo[]>;
-
-      // Terminal komutları
-      runCommand: (command: string) => Promise<string>;
-    };
+    electronAPI: ElectronAPI;
   }
 }
 

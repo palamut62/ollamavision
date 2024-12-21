@@ -155,7 +155,7 @@ const Terminal: React.FC<TerminalProps> = ({ onClose, onMinimize }) => {
       }
     });
 
-    term.write('Desktop Agent Terminal\r\n\r\n$ ');
+    term.write('Desktop Agent Terminal\r\nType "help" for available commands\r\n\r\n$ ');
 
     term.onData((data) => {
       if (data === '\r') { // Enter tuşu

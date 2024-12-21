@@ -159,6 +159,68 @@ ipcMain.handle('ollama-check-status', async () => {
 // Komut çalıştırma
 ipcMain.handle('run-command', async (_, command: string) => {
   try {
+    // Help komutu
+    if (command === 'help') {
+      return `Desktop Agent Help
+=================
+
+Terminal Commands:
+----------------
+help                    Show this help message
+clear, cls             Clear terminal screen
+ollama list            List installed models
+ollama pull <model>    Download a model
+ollama rm <model>      Remove a model
+ollama run <model>     Run a model with optional prompt
+
+Model Management:
+---------------
+- Click on a model in the sidebar to select it
+- Click the delete (trash) icon to remove a model
+- Models are automatically downloaded when needed
+- Progress is shown in the status bar during downloads
+
+Chat Interface:
+-------------
+- Select a model from the sidebar to start chatting
+- Click "New Chat" to start a fresh conversation
+- Previous chats are saved automatically
+- Use Ctrl+Enter to send messages
+- Code blocks are automatically formatted
+- Click the copy button to copy code snippets
+
+System Information:
+-----------------
+- CPU and RAM usage are shown in the sidebar
+- System metrics are updated every 5 seconds
+- Green dot indicates Ollama is running
+- Red dot indicates Ollama is stopped
+- Yellow dot indicates Ollama is not installed
+
+Keyboard Shortcuts:
+-----------------
+Terminal:
+Ctrl+C              Copy selected text / Cancel command
+Ctrl+V              Paste text
+Ctrl+L              Clear terminal screen
+
+Chat:
+Ctrl+Enter          Send message
+Ctrl+B              Bold text
+Ctrl+I              Italic text
+Ctrl+K              Code block
+
+Window Controls:
+--------------
+- Click and drag the terminal header to resize
+- Click minimize (-) to hide terminal
+- Click close (x) to close terminal
+- Terminal state is preserved when hidden
+
+For more information, visit:
+https://github.com/ollama/ollama`;
+    }
+
     // Ollama komutlarını özel olarak işle
     if (command.startsWith('ollama')) {
       const parts = command.split(' ');
